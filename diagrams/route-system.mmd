@@ -1,0 +1,13 @@
+flowchart TD
+    Origin["Select origin airport"] --> RouteMode["Enable route mode"]
+    RouteMode --> Destination["Select destination airport"]
+    Destination --> Price["Calculate route price"]
+    Price --> Confirm["RtBuyUi confirmation"]
+    Confirm --> Create["GameManager.CreateRoute"]
+
+    Create --> AirportRoutes["Airport.routes"]
+    AirportRoutes --> SelectRoute["Select route"]
+    SelectRoute --> Fleet["GarageManager route mode"]
+    Fleet --> Assign["GameManager.AddPlaneToRoute"]
+    Assign --> Plane["Plane autonomous operation"]
+    Plane --> Metrics["Route metrics"]
