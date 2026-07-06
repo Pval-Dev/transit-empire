@@ -1,0 +1,11 @@
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Boarding
+    Boarding --> Flying
+    Boarding --> Waiting
+    Waiting --> Boarding
+    Flying --> Arrived
+    Flying --> OutOfService
+    Arrived --> Turnaround
+    Turnaround --> Boarding
+    OutOfService --> Boarding
