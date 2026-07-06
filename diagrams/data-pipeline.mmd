@@ -1,0 +1,11 @@
+flowchart TD
+    RawAirports["Raw airport data"] --> CleanAirports["Filter and classify airports"]
+    CleanAirports --> Balance["Apply global airport type budgets"]
+    Balance --> AirportOutput["airports.json"]
+
+    RawGeo["Raw GeoJSON"] --> MatchCountries["Map country names"]
+    MatchCountries --> Triangulate["Triangulate polygons"]
+    Triangulate --> CountryOutput["countries.json"]
+
+    AirportOutput --> UnityWorld["Unity runtime world"]
+    CountryOutput --> UnityWorld
