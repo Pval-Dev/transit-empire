@@ -1,0 +1,13 @@
+flowchart TD
+    Runtime["Runtime state"] --> Save["SaveManager.SaveGame"]
+    Save --> DTO["GameSave DTO"]
+    DTO --> JsonFile["JSON slot file"]
+
+    JsonFile --> Load["SaveManager.LoadGame"]
+    Load --> Reset["Reset / regenerate world"]
+    Reset --> Lookup["Build airport lookup by name"]
+    Lookup --> RestoreGlobals["Restore globals and finance"]
+    RestoreGlobals --> RestoreWorld["Restore countries and airports"]
+    RestoreWorld --> RestoreRoutes["Restore routes and passengers"]
+    RestoreRoutes --> RestorePlanes["Instantiate and assign planes"]
+    RestorePlanes --> RuntimeRestored["Runtime state restored"]
