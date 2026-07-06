@@ -1,0 +1,17 @@
+flowchart TD
+    Data["External datasets<br/>Airport CSV / GeoJSON"] --> Pipeline["Python preprocessing"]
+    Pipeline --> Json["Unity JSON resources<br/>airports.json / countries.json"]
+
+    Json --> World["World builders<br/>AirportGenerator / CountryBorderGenerator"]
+    World --> Domain["Runtime domain<br/>Country / Airport / Plane"]
+
+    Domain --> Core["Core orchestration<br/>GameManager"]
+    Core --> Economy["Economy<br/>Loans / Investors / Maintenance"]
+    Core --> Routes["Routes and fleet<br/>RouteManager / GarageManager"]
+    Core --> Persistence["Persistence<br/>SaveManager"]
+
+    UI["Context UI controllers"] --> Core
+    UI --> Domain
+
+    Services["Services<br/>Audio / Notifications / Localization"] --> UI
+    Services --> Core
