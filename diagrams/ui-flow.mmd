@@ -1,0 +1,15 @@
+flowchart TD
+    Click["Map / UI interaction"] --> Selection["GameManager selection state"]
+
+    Selection --> CountryUI["CountryUIManager"]
+    Selection --> AirportUI["AirportInformationUiManager"]
+    Selection --> PlaneUI["InformationManager"]
+    Selection --> RouteUI["RouteManager"]
+
+    AirportUI --> Shop["PlaneShopPanel"]
+    AirportUI --> Garage["GarageManager"]
+    AirportUI --> Routes["RouteManager"]
+
+    Shop --> PlaneUI
+    Garage --> PlaneUI
+    Routes --> RtBuy["RtBuyUi"]
