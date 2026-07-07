@@ -42,7 +42,7 @@ I keep this project in my portfolio because it demonstrates large-system thinkin
 
 ### Main Menu
 
-![Main Menu](screenshots/main-menu.png.png)
+![Main Menu](screenshots/main-menu.png)
 
 ### Runtime Simulation
 
@@ -50,7 +50,7 @@ I keep this project in my portfolio because it demonstrates large-system thinkin
 
 ### Country Purchase
 
-![Country Purchase](screenshots/country-purchase.png)
+![Country Purchase](screenshots/country-purchase..png)
 
 ### Country Progression
 
@@ -315,10 +315,10 @@ The UI connects several gameplay systems: aircraft inspection, route management,
 ```text
 transit-empire.docs/
 ├── screenshots/
-│   ├── main-menu.png.png
+│   ├── main-menu.png
 │   ├── world-map.png
 │   ├── runtime-simulation.png
-│   ├── country-purchase.png
+│   ├── country-purchase..png
 │   ├── country-progress.png
 │   ├── route-network-closeup.png
 │   ├── route-details-panel.png
@@ -508,7 +508,7 @@ Documentation: Markdown, Mermaid
 ---
 
 ## Author
-Pval-Dev
+
 Developed by **Pval-Dev**.
 
 This repository documents the technical design and implementation approach behind Transit Empire.
