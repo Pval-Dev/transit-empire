@@ -4,7 +4,7 @@
 
 The project focuses on simulation systems, world generation, airline operations, aircraft routing, economy, financing, and persistence. It was built as a technical prototype to explore how a data-driven airline management game could work at global scale.
 
-![Transit Empire World Map](assets/screenshots/world-map.png)
+![Transit Empire World Map](screenshots/world-map.png)
 
 ---
 
@@ -42,35 +42,35 @@ I keep this project in my portfolio because it demonstrates large-system thinkin
 
 ### Main Menu
 
-![Main Menu](assets/screenshots/main-menu.png.png)
+![Main Menu](screenshots/main-menu.png.png)
 
 ### Runtime Simulation
 
-![Runtime Simulation](assets/screenshots/runtime-simulation.png)
+![Runtime Simulation](screenshots/runtime-simulation.png)
 
 ### Country Purchase
 
-![Country Purchase](assets/screenshots/country-purchase.png)
+![Country Purchase](screenshots/country-purchase.png)
 
 ### Country Progression
 
-![Country Progression](assets/screenshots/country-progress.png)
+![Country Progression](screenshots/country-progress.png)
 
 ### Route Network
 
-![Route Network](assets/screenshots/route-network-closeup.png)
+![Route Network](screenshots/route-network-closeup.png)
 
 ### Route Management
 
-![Route Management](assets/screenshots/route-details-panel.png)
+![Route Management](screenshots/route-details-panel.png)
 
 ### Fleet Assignment
 
-![Fleet Assignment](assets/screenshots/fleet-assignment.png)
+![Fleet Assignment](screenshots/fleet-assignment.png)
 
 ### Financing Offers
 
-![Financing Offers](assets/screenshots/financing-offers.png)
+![Financing Offers](screenshots/financing-offers.png)
 
 ---
 
@@ -314,17 +314,16 @@ The UI connects several gameplay systems: aircraft inspection, route management,
 
 ```text
 transit-empire.docs/
-├── assets/
-│   └── screenshots/
-│       ├── main-menu.png.png
-│       ├── world-map.png
-│       ├── runtime-simulation.png
-│       ├── country-purchase.png
-│       ├── country-progress.png
-│       ├── route-network-closeup.png
-│       ├── route-details-panel.png
-│       ├── fleet-assignment.png
-│       └── financing-offers.png
+├── screenshots/
+│   ├── main-menu.png.png
+│   ├── world-map.png
+│   ├── runtime-simulation.png
+│   ├── country-purchase.png
+│   ├── country-progress.png
+│   ├── route-network-closeup.png
+│   ├── route-details-panel.png
+│   ├── fleet-assignment.png
+│   └── financing-offers.png
 │
 ├── code-samples/
 │   ├── GameManager.sample.cs
@@ -509,7 +508,7 @@ Documentation: Markdown, Mermaid
 ---
 
 ## Author
-
+Pval-Dev
 Developed by **Pval-Dev**.
 
 This repository documents the technical design and implementation approach behind Transit Empire.
