@@ -1,0 +1,9 @@
+flowchart TD
+    Save["Save runtime"] --> Primitive["Serialize primitive snapshots + indexes"]
+    Primitive --> Json["save.json"]
+    Json --> Read["Load JSON"]
+    Read --> Globals["Restore global economy"]
+    Globals --> Airports["Restore purchased airports"]
+    Airports --> Routes["Resolve route indexes"]
+    Routes --> Planes["Instantiate aircraft"]
+    Planes --> Bind["Restore origin / destination / stats / lifecycle state"]

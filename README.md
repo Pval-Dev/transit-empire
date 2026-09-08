@@ -1,514 +1,260 @@
 # Transit Empire
 
-**Transit Empire** is a large-scale Unity/C# prototype for a global airline management simulator.
+> Unity/C# airline-management simulation prototype focused on runtime systems, route/fleet orchestration, passenger demand, aircraft lifecycle state, and persistence.
 
-The project focuses on simulation systems, world generation, airline operations, aircraft routing, economy, financing, and persistence. It was built as a technical prototype to explore how a data-driven airline management game could work at global scale.
+**Transit Empire** is an archived management-simulation prototype built in Unity. The player grows an airline by purchasing airports, creating routes, assigning aircraft, transporting direct and connecting passengers, and reinvesting revenue into airport and fleet progression.
 
-![Transit Empire World Map](screenshots/world-map.png)
+This repository is a **curated technical portfolio**, not a full Unity project export. The documentation and code samples below were rebuilt from the original project source so the repository only claims behavior that can be verified in that source snapshot.
 
----
-
-## Overview
-
-Transit Empire is an airline management simulation prototype where the player builds an airline operations network by purchasing countries, unlocking airports, creating routes, assigning aircraft, managing finances, and expanding across a generated world map.
-
-The game includes:
-
-- A global country map generated from external data.
-- Thousands of airports distributed by country, continent, and airport type.
-- Country purchasing and territorial progression.
-- Airport demand, reputation, capacity, upgrades, and maintenance.
-- Route creation between airports.
-- Aircraft assignment, state simulation, XP, durability, wear, and upgrades.
-- Loans, revenue-based financing, and investors.
-- Save/load persistence with multiple slots.
-- Runtime UI systems for management, settings, garage, routes, and finance.
-
-This repository is not a full source dump. It contains curated documentation, architecture diagrams, and representative code samples that explain the main systems behind the prototype.
+![Transit Empire world map](screenshots/world-map.png)
 
 ---
 
-## Project Context
+## Engineering Highlights
 
-Transit Empire was my first large Unity/C# project.
+- **Data-driven airport generation** from a JSON resource into a continent/country hierarchy.
+- **Destination-level passenger demand** stored per airport with different generation rules for regional, capital, and international airports.
+- **Route and fleet constraints** including route-slot capacity, runway capacity, route pricing, and aircraft reassignment.
+- **Aircraft lifecycle state machine** covering `Idle`, `Boarding`, `Flying`, `Arrived`, `Waiting`, `Turnaround`, and `OutOfService`.
+- **Connection-passenger handling** with a manifest that transfers passengers through intermediate airports.
+- **Aircraft wear and reliability simulation** with mileage-based degradation, critical-failure probability, repair time, and repair cost.
+- **Progression systems** for both airports and aircraft using XP, levels, stat points, and upgrade curves.
+- **JSON persistence** for global economy state, purchased airports, routes, and aircraft assignments/stats using a staged reconstruction pass.
+- **Management UI orchestration** for airport purchase, route creation, fleet assignment, aircraft inspection, and speed controls.
 
-It was developed while I was learning Unity architecture, C# patterns, simulation design, UI workflows, persistence, and data-driven world generation. Because of that, some systems reflect prototype-era decisions and could be redesigned with a cleaner architecture today.
+---
 
-I keep this project in my portfolio because it demonstrates large-system thinking: world generation, route simulation, aircraft state machines, economy, financing, save/load persistence, and external data pipelines.
+## Core Simulation Loop
+
+```mermaid
+flowchart LR
+    Acquire["Acquire airport"] --> Route["Create route"]
+    Route --> Assign["Assign aircraft"]
+    Assign --> Demand["Board passenger demand"]
+    Demand --> Flight["Simulate flight"]
+    Flight --> Revenue["Apply revenue / fuel / condition"]
+    Revenue --> Progress["Airport & aircraft progression"]
+    Progress --> Route
+```
+
+The project is systems-driven rather than direct-control focused: aircraft execute their own runtime lifecycle while the player manages network and capacity decisions.
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TD
+    Data["airports.json"] --> Generator["AirportGenerator"]
+    Generator --> Airports["Airport / Country runtime objects"]
+    UI["Management UI controllers"] --> GM["GameManager"]
+    GM --> Airports
+    GM --> Routes["Route state & fleet assignment"]
+    GM --> Planes["Plane runtime state machines"]
+    Airports --> Planes
+    Planes --> GM
+    Save["SaveManager"] --> GM
+    Save --> Airports
+    Save --> Planes
+```
+
+The original prototype uses `GameManager` as a central coordinator. That made iteration fast, but it also became the largest coupling point in the project. The architectural notes document both the useful boundaries and the places I would split today.
+
+See [`docs/architecture.md`](docs/architecture.md).
+
+---
+
+## Aircraft Runtime
+
+Aircraft progress through explicit operational states:
+
+```text
+Idle
+  ↓
+Boarding ── insufficient demand ──> Waiting
+  ↓                                 │
+Flying <────────────────────────────┘
+  ↓
+Arrived
+  ↓
+Turnaround
+  ↓
+Boarding
+
+Flying ── critical condition failure ──> OutOfService ──> Boarding / Idle
+```
+
+During boarding, direct passengers are loaded first. Remaining capacity can be filled by passengers whose final destination can be reached through the current network. A connection manifest preserves those final destinations until arrival.
+
+During flight, distance contributes to wear and reliability changes. Low reliability can trigger a critical failure, forcing the aircraft into the repair path.
+
+Representative code: [`AircraftStateMachine.sample.cs`](code-samples/AircraftStateMachine.sample.cs)
+
+---
+
+## Airport Demand and Progression
+
+Each airport maintains a destination-demand dictionary:
+
+```csharp
+Dictionary<Airport, int> passengersByRoute;
+```
+
+Passenger generation is influenced by continent, country, airport, reputation, and airport-type multipliers. Destination selection changes by airport category:
+
+- **Regional** airports favor nearby airports in the same country.
+- **Capital** airports favor nearby airports in the same continent.
+- **International** airports sample from higher-tier airports across the active network.
+
+Capacity pressure can reduce reputation, while flights award airport XP. Airport progression can increase runway capacity, route slots, passenger capacity, and reputation ceiling.
+
+Representative code: [`AirportDemand.sample.cs`](code-samples/AirportDemand.sample.cs)
+
+---
+
+## Route and Fleet Operations
+
+Route creation is not just a visual line. The runtime checks and updates several pieces of state:
+
+```text
+origin / destination validation
+→ route price
+→ route-slot availability
+→ outbound + inbound route references
+→ passenger-demand entry
+→ route ownership cost
+→ aircraft runway-capacity check
+→ aircraft destination assignment
+```
+
+Historical route metrics are accumulated when aircraft are removed from a route.
+
+Representative code: [`RouteOperations.sample.cs`](code-samples/RouteOperations.sample.cs)
+
+---
+
+## Persistence
+
+The prototype saves to one JSON file under `Application.persistentDataPath`.
+
+The save contains:
+
+- global money, elapsed days, earned/spent totals;
+- purchased airport state and upgrade values;
+- route references stored as indexes into the generated airport list;
+- aircraft stats, progression, condition, origin/destination references, and runtime state.
+
+Loading is staged: first airports are restored, then route references, then aircraft are recreated and reattached to their origin/destination airports.
+
+This is a useful reconstruction strategy for Unity object references, but it is still prototype persistence: there is no schema versioning or migration layer.
+
+Representative code: [`SaveManager.sample.cs`](code-samples/SaveManager.sample.cs)
+
+---
+
+## Data-Driven World Setup
+
+`AirportGenerator` reads `Resources/airports.json`, locates the configured continent object, creates a country object when necessary, spawns airport prefabs, assigns gameplay metadata, and registers the generated airport with `GameManager`.
+
+The archived source snapshot bundled a small sample dataset. The repository therefore presents this as a **data-driven generation system**, not as a benchmarked large-scale world generator.
+
+Representative code: [`AirportGenerator.sample.cs`](code-samples/AirportGenerator.sample.cs)
 
 ---
 
 ## Screenshots
 
 ### Main Menu
-
-![Main Menu](screenshots/main-menu.png)
+![Main menu](screenshots/main-menu.png)
 
 ### Runtime Simulation
+![Runtime simulation](screenshots/runtime-simulation.png)
 
-![Runtime Simulation](screenshots/runtime-simulation.png)
-
-### Country Purchase
-
-![Country Purchase](screenshots/country-purchase..png)
-
-### Country Progression
-
-![Country Progression](screenshots/country-progress.png)
+### Country / Airport Acquisition
+![Country purchase](screenshots/country-purchase.png)
 
 ### Route Network
+![Route network](screenshots/route-network-closeup.png)
 
-![Route Network](screenshots/route-network-closeup.png)
-
-### Route Management
-
-![Route Management](screenshots/route-details-panel.png)
+### Route Details
+![Route details](screenshots/route-details-panel.png)
 
 ### Fleet Assignment
-
-![Fleet Assignment](screenshots/fleet-assignment.png)
-
-### Financing Offers
-
-![Financing Offers](screenshots/financing-offers.png)
+![Fleet assignment](screenshots/fleet-assignment.png)
 
 ---
 
-## Core Gameplay Loop
-
-The simulation is built around a management loop:
-
-```text
-Buy country
-→ unlock airports
-→ buy or manage airports
-→ create routes
-→ assign aircraft
-→ transport passengers
-→ generate revenue
-→ upgrade airports and aircraft
-→ expand to more countries
-```
-
-The player does not directly control aircraft movement. Instead, the focus is on strategic decisions: route planning, aircraft allocation, financing, infrastructure growth, and long-term expansion.
-
----
-
-## Main Systems
-
-### World Generation
-
-Transit Empire uses external data to generate a large world map with countries and airports.
-
-The world generation pipeline includes:
-
-- Country polygon data converted into Unity-ready country visuals.
-- Airport CSV data converted into a gameplay dataset.
-- Airport tier assignment by country.
-- Regional, capital, and international airport classification.
-- Synthetic fallback generation for countries with insufficient real airport data.
-- Minimum distance filtering to avoid overcrowded airport clusters.
-
-Relevant files:
-
-```text
-docs/data-pipeline.md
-docs/airport-system.md
-code-samples/AirportDataPipeline.sample.py
-code-samples/AirportGenerator.sample.cs
-code-samples/CountryBorderGenerator.sample.cs
-```
-
----
-
-### Country Progression
-
-Countries act as progression containers. Each country owns a set of airports and unlocks more airports as economic development increases.
-
-Country progression includes:
-
-- Purchase price calculation based on airport count and country cost multiplier.
-- Initial airport visibility when the country is activated.
-- Dynamic unlocking of regional, capital, and international airports.
-- Development generated by aircraft revenue.
-- Country-level aggregate metrics such as generated income, owned airports, and average reputation.
-
-Relevant files:
-
-```text
-docs/airport-system.md
-code-samples/CountryProgression.sample.cs
-```
-
----
-
-### Airport Simulation
-
-Airports are active simulation entities. They generate passengers, store demand by destination, track reputation, enforce capacity limits, and expose upgrade paths.
-
-Airport simulation includes:
-
-- Passenger demand generation.
-- Demand distribution by route destination.
-- Capacity pressure and overflow handling.
-- Reputation penalties when airports become overloaded.
-- Airport XP and level-up logic.
-- Infrastructure upgrades for runways, route slots, capacity, and reputation.
-- Maintenance costs and debt accumulation.
-
-Relevant files:
-
-```text
-docs/airport-system.md
-code-samples/Airport.sample.cs
-```
-
----
-
-### Route System
-
-Routes connect airports and define the operational network of the airline.
-
-The route system includes:
-
-- Route creation mode.
-- Route confirmation flow.
-- Route selection.
-- Dynamic route buttons.
-- Route metrics.
-- Historical route statistics.
-- Active aircraft contribution to route statistics.
-- Transitions into fleet assignment mode.
-
-Relevant files:
-
-```text
-docs/route-system.md
-code-samples/RouteManager.sample.cs
-```
-
----
-
-### Aircraft Simulation
-
-Aircraft are simulated using a runtime state machine.
-
-Aircraft states include:
-
-```text
-Idle
-Boarding
-Flying
-Arrived
-Waiting
-Turnaround
-OutOfService
-```
-
-Aircraft simulation includes:
-
-- Boarding logic.
-- Passenger loading.
-- Route traversal using Bezier movement.
-- Trip revenue calculation.
-- Fuel cost calculation.
-- Passenger redistribution.
-- XP gain.
-- Durability, HP, wear, and reliability.
-- Critical failures and repair handling.
-- Aircraft stat upgrades.
-
-Relevant files:
-
-```text
-docs/simulation-system.md
-code-samples/PlaneStateMachine.sample.cs
-code-samples/InformationManager.sample.cs
-```
-
----
-
-### Economy and Financing
-
-Transit Empire includes multiple financing systems to support expansion.
-
-The financing system includes:
-
-- Standard loans based on current cash.
-- Revenue-based loans based on aircraft route performance.
-- Investors that provide cash in exchange for company autonomy.
-- Active debt management.
-- Daily payment toggles.
-- Early repayment discounts.
-- Penalty logic for unpaid loans.
-
-Relevant files:
-
-```text
-docs/economy-system.md
-code-samples/LoanManager.sample.cs
-```
-
----
-
-### Save and Load System
-
-The prototype includes JSON-based persistence with multiple save slots.
-
-The save system stores:
-
-- Global money and date.
-- Airline metrics.
-- Country state.
-- Airport ownership and progression.
-- Passenger demand dictionaries.
-- Route statistics.
-- Aircraft state.
-- Garage and route assignments.
-- Loan and investor state.
-
-The load process uses a multi-pass restore strategy to rebuild object references after the generated world exists again.
-
-Relevant files:
-
-```text
-docs/save-system.md
-code-samples/SaveManager.sample.cs
-```
-
----
-
-## Technical Highlights
-
-### Data-driven world generation
-
-The game does not manually place every airport. A Python pipeline processes airport and country data into JSON files consumed by Unity.
-
-### Runtime country mesh generation
-
-Country visuals are generated from polygon and triangulation data using Unity components such as:
-
-```text
-LineRenderer
-MeshFilter
-MeshRenderer
-PolygonCollider2D
-TextMesh
-```
-
-### Aircraft state machine
-
-Aircraft behavior is separated into operational states such as boarding, flying, arrival, turnaround, and repair.
-
-### Persistent simulation state
-
-The project saves complex runtime state, including generated-world references, airport dictionaries, aircraft assignments, route statistics, and financing data.
-
-### Management UI integration
-
-The UI connects several gameplay systems: aircraft inspection, route management, financing, country purchase, airport upgrades, save/load, and settings.
-
----
-
-## Repository Structure
-
-```text
-transit-empire.docs/
-├── screenshots/
-│   ├── main-menu.png
-│   ├── world-map.png
-│   ├── runtime-simulation.png
-│   ├── country-purchase..png
-│   ├── country-progress.png
-│   ├── route-network-closeup.png
-│   ├── route-details-panel.png
-│   ├── fleet-assignment.png
-│   └── financing-offers.png
-│
-├── code-samples/
-│   ├── GameManager.sample.cs
-│   ├── SaveManager.sample.cs
-│   ├── PlaneStateMachine.sample.cs
-│   ├── Airport.sample.cs
-│   ├── AirportGenerator.sample.cs
-│   ├── CountryProgression.sample.cs
-│   ├── CountryBorderGenerator.sample.cs
-│   ├── RouteManager.sample.cs
-│   ├── LoanManager.sample.cs
-│   ├── InformationManager.sample.cs
-│   └── AirportDataPipeline.sample.py
-│
-├── diagrams/
-│   ├── architecture.mmd
-│   ├── simulation-loop.mmd
-│   ├── save-flow.mmd
-│   ├── route-system.mmd
-│   ├── economy.mmd
-│   ├── world-generation.mmd
-│   ├── aircraft-state-machine.mmd
-│   ├── ui-flow.mmd
-│   └── data-pipeline.mmd
-│
-└── docs/
-    ├── architecture.md
-    ├── simulation-system.md
-    ├── economy-system.md
-    ├── route-system.md
-    ├── save-system.md
-    ├── airport-system.md
-    ├── data-pipeline.md
-    ├── services-system.md
-    ├── ui-system.md
-    ├── input-and-onboarding.md
-    ├── module-responsibilities.md
-    ├── system-flow.md
-    ├── technical-notes.md
-    ├── refactor-roadmap.md
-    ├── glossary.md
-    ├── portfolio-positioning.md
-    └── engineering-summary.md
-```
-
----
-
-## Code Samples
-
-The files in `code-samples/` are representative samples, not production-ready drop-in scripts.
-
-They were cleaned and reduced to communicate the architecture and main logic clearly without exposing the entire project source.
-
-Key samples:
-
-| Sample                             | Purpose                                              |
-| ----------------------------------- | ----------------------------------------------------- |
-| `GameManager.sample.cs`            | Central simulation orchestration                     |
-| `SaveManager.sample.cs`            | JSON persistence and multi-pass restore              |
-| `PlaneStateMachine.sample.cs`      | Aircraft runtime behavior                            |
-| `Airport.sample.cs`                | Airport demand, capacity, reputation, and upgrades   |
-| `AirportGenerator.sample.cs`       | Airport world generation from JSON                   |
-| `CountryProgression.sample.cs`     | Country unlock and development system                |
-| `CountryBorderGenerator.sample.cs` | Country mesh, border, collider, and label generation |
-| `RouteManager.sample.cs`           | Route UI and route metric aggregation                |
-| `LoanManager.sample.cs`            | Loans, investors, and debt management                |
-| `InformationManager.sample.cs`     | Aircraft inspection and contextual UI                |
-| `AirportDataPipeline.sample.py`    | Python pipeline for generating airport data          |
-
----
-
-## Architecture Diagrams
-
-The `diagrams/` directory contains Mermaid diagrams for the main systems:
-
-```text
-architecture.mmd
-simulation-loop.mmd
-aircraft-state-machine.mmd
-world-generation.mmd
-data-pipeline.mmd
-route-system.mmd
-economy.mmd
-save-flow.mmd
-ui-flow.mmd
-```
-
-These diagrams document the relationships between managers, simulation entities, UI controllers, data pipelines, and persistence systems.
+## Selected Code Samples
+
+| Sample | Demonstrates |
+|---|---|
+| [`AircraftStateMachine.sample.cs`](code-samples/AircraftStateMachine.sample.cs) | State transitions, boarding, connection demand, movement, wear, critical failure, turnaround |
+| [`AirportDemand.sample.cs`](code-samples/AirportDemand.sample.cs) | Destination demand, capacity pressure, reputation, airport XP/upgrades |
+| [`RouteOperations.sample.cs`](code-samples/RouteOperations.sample.cs) | Route pricing, slot/runway validation, route creation, fleet assignment |
+| [`SaveManager.sample.cs`](code-samples/SaveManager.sample.cs) | JSON serialization and staged reference reconstruction |
+| [`AirportGenerator.sample.cs`](code-samples/AirportGenerator.sample.cs) | JSON-driven runtime object generation and hierarchy setup |
+
+These are **curated excerpts** from the archived source. Some field names and method boundaries were normalized for readability, but no additional gameplay systems were invented for the portfolio version.
 
 ---
 
 ## Documentation
 
-The `docs/` directory contains deeper technical documentation for each major system.
+- [`docs/architecture.md`](docs/architecture.md) — runtime boundaries and system relationships.
+- [`docs/persistence.md`](docs/persistence.md) — save model, reconstruction flow, and limitations.
+- [`docs/engineering-notes.md`](docs/engineering-notes.md) — what worked, what aged poorly, and how I would redesign it today.
+- [`docs/README.md`](docs/README.md) — documentation index.
 
-Recommended reading order:
-
-```text
-docs/engineering-summary.md
-docs/architecture.md
-docs/system-flow.md
-docs/simulation-system.md
-docs/airport-system.md
-docs/route-system.md
-docs/economy-system.md
-docs/save-system.md
-docs/data-pipeline.md
-docs/refactor-roadmap.md
-```
+Editable Mermaid sources live under [`diagrams/`](diagrams/).
 
 ---
 
-## Known Limitations
+## What I Would Change Today
 
-Transit Empire is a prototype, not a finished commercial release.
+Transit Empire was one of my earlier large Unity/C# systems projects. The prototype works through direct Unity object references and a central manager, but today I would redesign several boundaries:
 
-Known limitations include:
+- split the ~900-line `GameManager` into route, fleet, economy, selection, and simulation services;
+- move business rules out of UI controllers;
+- replace broad singleton access with explicit dependencies/events;
+- separate persistent IDs from scene/runtime object references;
+- version the save schema and add migration logic;
+- add deterministic simulation tests for demand, route economics, and state transitions;
+- replace polling/`InvokeRepeating` coordination with clearer simulation ticks where appropriate;
+- isolate catalog/balance data from runtime orchestration.
 
-- UI layout is functional but not fully polished.
-- Some systems are tightly coupled to the central `GameManager`.
-- Some UI controllers mix presentation logic with gameplay actions.
-- Several systems would benefit from stronger separation between domain logic, services, and views.
-- The project grew organically while I was learning Unity and C#.
-
-Today, I would redesign parts of the architecture using cleaner boundaries, explicit domain services, event-driven communication, better UI state management, and stronger data validation.
-
----
-
-## What I Would Improve Today
-
-If I rebuilt this project now, I would focus on:
-
-- Splitting `GameManager` into smaller domain services.
-- Moving business logic out of UI controllers.
-- Replacing direct singleton access with dependency boundaries.
-- Adding stronger save schema versioning.
-- Improving UI scaling and layout consistency.
-- Adding automated simulation tests.
-- Creating a clearer event system for route, finance, airport, and aircraft updates.
-- Separating data import tools from runtime generation code.
+Those limitations are part of why the project is useful in the portfolio: it shows both the scale of the system I could build and the architectural problems I learned to recognize afterward.
 
 ---
 
-## What This Project Demonstrates
+## Verified Scope / Removed Experiments
 
-Transit Empire demonstrates my ability to build and connect large gameplay systems, including:
+The original project folder also contained an unfinished **Unity ML-Agents experiment**. The agent scripts were not referenced by the archived scene or prefabs, and ML-Agents was not part of the implemented game loop. It is intentionally excluded from this portfolio repository.
 
-- Unity runtime simulation.
-- C# state machines.
-- Data-driven world generation.
-- Python data preprocessing.
-- Persistent save/load systems.
-- Route and aircraft management.
-- Economy and financing systems.
-- UI-driven management tools.
-- Large prototype architecture.
-- Technical documentation and portfolio presentation.
+Portfolio scope is intentionally limited to behavior verified in the archived source snapshot used for this revision.
 
 ---
 
-## Status
+## Project Status
 
-This project is currently an archived technical prototype.
+**Archived prototype / portfolio project.**
 
-It is not being presented as a finished game. It is included as a portfolio project because it shows my growth as a developer and my ability to design and implement interconnected simulation systems.
+Transit Empire is not presented as a finished commercial game. Its value is the interconnected simulation work: demand generation, routes, fleet state, economy, progression, runtime recovery, UI orchestration, and persistence.
 
 ---
 
 ## Tech Stack
 
 ```text
-Engine: Unity
+Engine: Unity 6 (6000.4.0f1)
 Language: C#
-Data Pipeline: Python
-Data Format: JSON
-UI: Unity UI, TextMeshPro
-Rendering: 2D sprites, LineRenderer, MeshRenderer
-Persistence: JSON save files
-Documentation: Markdown, Mermaid
+Rendering: Universal Render Pipeline / 2D
+UI: Unity UI + TextMeshPro
+Input: Unity Input System
+Persistence: JsonUtility + local JSON file
+Data: JSON Resources
+Documentation: Markdown + Mermaid
 ```
-
----
 
 ## Author
 
 Developed by **Pval-Dev**.
-
-This repository documents the technical design and implementation approach behind Transit Empire.

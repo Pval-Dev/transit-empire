@@ -1,11 +1,12 @@
 stateDiagram-v2
     [*] --> Idle
-    Idle --> Boarding
-    Boarding --> Flying
-    Boarding --> Waiting
-    Waiting --> Boarding
-    Flying --> Arrived
-    Flying --> OutOfService
-    Arrived --> Turnaround
-    Turnaround --> Boarding
-    OutOfService --> Boarding
+    Idle --> Boarding: route assigned
+    Boarding --> Waiting: demand below threshold
+    Waiting --> Boarding: retry
+    Boarding --> Flying: enough passengers + in range
+    Flying --> Arrived: destination reached
+    Flying --> OutOfService: critical condition failure
+    Arrived --> Turnaround: settle trip
+    Turnaround --> Boarding: turnaround complete
+    OutOfService --> Boarding: repaired + route available
+    OutOfService --> Idle: repaired without route

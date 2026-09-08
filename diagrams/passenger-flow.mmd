@@ -1,0 +1,10 @@
+flowchart LR
+    Tick["Airport generation tick"] --> Factors["continent × country × airport × type × reputation"]
+    Factors --> Demand["passengersByRoute"]
+    Demand --> Direct["Direct passengers"]
+    Demand --> Connect["Eligible connection passengers"]
+    Direct --> Board["Aircraft capacity"]
+    Connect --> Board
+    Board --> Manifest["Connection manifest"]
+    Manifest --> Arrival["Arrival"]
+    Arrival --> Redistribute["Restore / redistribute destination demand"]

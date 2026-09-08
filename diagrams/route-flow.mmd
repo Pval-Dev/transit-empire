@@ -1,0 +1,11 @@
+flowchart TD
+    Select["Select origin + destination"] --> Price["Calculate distance-based route price"]
+    Price --> Slots{"Route slot available?"}
+    Slots -- No --> Reject["Reject"]
+    Slots -- Yes --> Create["Add outbound + inbound route refs"]
+    Create --> Demand["Create demand dictionary entry"]
+    Demand --> Pay["Charge route cost"]
+    Pay --> Plane["Select aircraft"]
+    Plane --> Runway{"Runway capacity available?"}
+    Runway -- No --> Reject2["Reject assignment"]
+    Runway -- Yes --> Assign["Assign aircraft destination"]

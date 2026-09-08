@@ -1,17 +1,15 @@
 flowchart TD
-    Data["External datasets<br/>Airport CSV / GeoJSON"] --> Pipeline["Python preprocessing"]
-    Pipeline --> Json["Unity JSON resources<br/>airports.json / countries.json"]
+    JSON["Resources/airports.json"] --> Generator["AirportGenerator"]
+    Generator --> Airports["Airport + Country runtime objects"]
 
-    Json --> World["World builders<br/>AirportGenerator / CountryBorderGenerator"]
-    World --> Domain["Runtime domain<br/>Country / Airport / Plane"]
+    UI["Management UI"] --> GM["GameManager"]
+    GM --> Airports
+    GM --> Routes["Route operations"]
+    GM --> Fleet["Garage / assignment"]
+    Routes --> Planes["Plane state machines"]
+    Airports --> Planes
+    Planes --> GM
 
-    Domain --> Core["Core orchestration<br/>GameManager"]
-    Core --> Economy["Economy<br/>Loans / Investors / Maintenance"]
-    Core --> Routes["Routes and fleet<br/>RouteManager / GarageManager"]
-    Core --> Persistence["Persistence<br/>SaveManager"]
-
-    UI["Context UI controllers"] --> Core
-    UI --> Domain
-
-    Services["Services<br/>Audio / Notifications / Localization"] --> UI
-    Services --> Core
+    Save["SaveManager"] --> GM
+    Save --> Airports
+    Save --> Planes
