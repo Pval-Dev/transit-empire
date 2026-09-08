@@ -6,7 +6,10 @@ Transit Empire is a Unity management-simulation prototype built around four prac
 
 ```mermaid
 flowchart TD
-    JSON["Resources/airports.json"] --> Generator["AirportGenerator"]
+    CSV["Real-world airport CSV"] --> Python["Python preprocessing pipeline"]
+    GeoJSON["Country GeoJSON"] --> Python
+    Python --> JSON["Resources/airports.json"]
+    JSON --> Generator["AirportGenerator"]
     Generator --> Country["Country objects"]
     Generator --> Airport["Airport objects"]
 
@@ -27,9 +30,27 @@ flowchart TD
 
 ## 1. World Setup
 
-`AirportGenerator` loads a JSON array from Unity `Resources` and turns each entry into runtime objects.
+The runtime `AirportGenerator` loads a JSON array from Unity `Resources` and turns each entry into runtime objects, but the JSON itself was produced by a separate Python preprocessing pipeline rather than authored manually.
 
-Each record contains the information required by the current prototype:
+The preprocessing tool consumes a real-world airport CSV and reads fields such as:
+
+```text
+airport name
+airport type
+ISO country
+IATA code
+scheduled-service flag
+latitude
+longitude
+```
+
+It filters unsupported records, groups airports by ISO country, ranks them using airport type/service/IATA information, assigns gameplay tiers, preserves geographic longitude/latitude as Unity map `x/y`, applies a minimum-distance filter, and exports the final `airports.json` dataset.
+
+Country GeoJSON is also consumed by the toolchain so the airport dataset can be aligned with the game's supported country set and fallback positions can be generated inside country polygons when needed.
+
+Historical Transit Empire iterations used roughly **20,000 real airport locations**. The archived `generate_airports.py` recovered with the project is a later balancing revision configured around a **10,000-airport target**. The reduced `airports.json` found in the Unity snapshot is therefore not representative of the full preprocessing pipeline used during development.
+
+Each exported airport record contains the information required by the runtime prototype:
 
 ```text
 airport name
@@ -41,9 +62,9 @@ passenger multiplier
 airport type
 ```
 
-The generator looks up an existing continent object, creates a country prefab if the country does not yet exist, creates the airport prefab, configures its `Airport` component, and registers it in `GameManager.AllAirports`.
+`AirportGenerator` looks up an existing continent object, creates a country prefab if the country does not yet exist, creates the airport prefab, configures its `Airport` component, and registers it in `GameManager.AllAirports`.
 
-The archived JSON is a small dataset, so this repository does not claim that the current snapshot was performance-tested at global scale.
+A curated version of the preprocessing logic is available in [`../code-samples/AirportDataPipeline.sample.py`](../code-samples/AirportDataPipeline.sample.py).
 
 ## 2. Airport Simulation
 
@@ -145,7 +166,8 @@ For an early large Unity prototype, several choices were effective:
 - explicit aircraft states instead of one monolithic flight loop;
 - a destination-level demand model rather than one passenger counter;
 - separate airport, aircraft, route, garage, and save concepts;
-- runtime generation from data rather than hand-authoring each airport object;
+- a dedicated Python preprocessing pipeline for real-world geographic data;
+- runtime generation from data rather than hand-authoring airport objects;
 - index-based save reconstruction for Unity references;
 - capacity constraints at both airport-route and runway/aircraft levels.
 
