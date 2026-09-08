@@ -4,7 +4,7 @@
 
 **Transit Empire** is an archived management-simulation prototype built in Unity. The player grows an airline by purchasing airports, creating routes, assigning aircraft, transporting direct and connecting passengers, and reinvesting revenue into airport and fleet progression.
 
-This repository is a **curated technical portfolio**, not a full Unity project export. The documentation and code samples below were rebuilt from the original project source so the repository only claims behavior that can be verified in that source snapshot.
+This repository is a **curated technical portfolio**, not a full Unity project export. The code samples are reconstructed from archived source, while historical project-scale details are called out explicitly when the reduced Unity snapshot no longer contains the full generated data used during development.
 
 ![Transit Empire world map](screenshots/world-map.png)
 
@@ -12,7 +12,8 @@ This repository is a **curated technical portfolio**, not a full Unity project e
 
 ## Engineering Highlights
 
-- **Data-driven airport generation** from a JSON resource into a continent/country hierarchy.
+- **Real-world airport data pipeline** built in Python from an external airport CSV containing geographic latitude/longitude and airport metadata, then transformed into Unity-ready gameplay JSON.
+- **Data-driven airport generation** from that JSON resource into a continent/country hierarchy.
 - **Destination-level passenger demand** stored per airport with different generation rules for regional, capital, and international airports.
 - **Route and fleet constraints** including route-slot capacity, runway capacity, route pricing, and aircraft reassignment.
 - **Aircraft lifecycle state machine** covering `Idle`, `Boarding`, `Flying`, `Arrived`, `Waiting`, `Turnaround`, and `OutOfService`.
@@ -152,13 +153,31 @@ Representative code: [`SaveManager.sample.cs`](code-samples/SaveManager.sample.c
 
 ---
 
-## Data-Driven World Setup
+## Real-World Airport Data Pipeline
 
-`AirportGenerator` reads `Resources/airports.json`, locates the configured continent object, creates a country object when necessary, spawns airport prefabs, assigns gameplay metadata, and registers the generated airport with `GameManager`.
+Transit Empire did not rely on hand-authored airport positions. A Python preprocessing pipeline consumed a real-world airport CSV containing airport type, ISO country, IATA code, scheduled-service information, and geographic latitude/longitude.
 
-The archived source snapshot bundled a small sample dataset. The repository therefore presents this as a **data-driven generation system**, not as a benchmarked large-scale world generator.
+The pipeline:
 
-Representative code: [`AirportGenerator.sample.cs`](code-samples/AirportGenerator.sample.cs)
+```text
+real-world airport CSV
+→ validate airport type and coordinates
+→ group by ISO country
+→ rank airports by type / service / IATA availability
+→ allocate international, capital/hub, and regional gameplay tiers
+→ preserve longitude/latitude as Unity map coordinates
+→ filter airports that are too close together
+→ export airports.json for Unity
+```
+
+Historical project iterations used **roughly 20,000 real airport locations**. The archived generator script preserved with the project is a later balancing variant configured around a **10,000-airport target**, so the small generated JSON found in the reduced Unity snapshot is not representative of the full data pipeline used during development.
+
+The pipeline also consumed country GeoJSON so countries could be mapped consistently and, where necessary, fallback airport positions could be generated inside country polygons.
+
+Representative code:
+
+- [`AirportDataPipeline.sample.py`](code-samples/AirportDataPipeline.sample.py)
+- [`AirportGenerator.sample.cs`](code-samples/AirportGenerator.sample.cs)
 
 ---
 
@@ -192,9 +211,10 @@ Representative code: [`AirportGenerator.sample.cs`](code-samples/AirportGenerato
 | [`AirportDemand.sample.cs`](code-samples/AirportDemand.sample.cs) | Destination demand, capacity pressure, reputation, airport XP/upgrades |
 | [`RouteOperations.sample.cs`](code-samples/RouteOperations.sample.cs) | Route pricing, slot/runway validation, route creation, fleet assignment |
 | [`SaveManager.sample.cs`](code-samples/SaveManager.sample.cs) | JSON serialization and staged reference reconstruction |
+| [`AirportDataPipeline.sample.py`](code-samples/AirportDataPipeline.sample.py) | Real-world airport CSV ingestion, coordinate preservation, ranking, tier allocation, JSON export |
 | [`AirportGenerator.sample.cs`](code-samples/AirportGenerator.sample.cs) | JSON-driven runtime object generation and hierarchy setup |
 
-These are **curated excerpts** from the archived source. Some field names and method boundaries were normalized for readability, but no additional gameplay systems were invented for the portfolio version.
+These are **curated excerpts** from the archived source and preprocessing tools. Some field names and method boundaries were normalized for readability, but no additional gameplay systems were invented for the portfolio version.
 
 ---
 
@@ -230,7 +250,7 @@ Those limitations are part of why the project is useful in the portfolio: it sho
 
 The original project folder also contained an unfinished **Unity ML-Agents experiment**. The agent scripts were not referenced by the archived scene or prefabs, and ML-Agents was not part of the implemented game loop. It is intentionally excluded from this portfolio repository.
 
-Portfolio scope is intentionally limited to behavior verified in the archived source snapshot used for this revision.
+The portfolio distinguishes between code directly recoverable from the archived Unity snapshot and historical project-scale details that are supported by the preserved preprocessing tools and project records.
 
 ---
 
@@ -238,7 +258,7 @@ Portfolio scope is intentionally limited to behavior verified in the archived so
 
 **Archived prototype / portfolio project.**
 
-Transit Empire is not presented as a finished commercial game. Its value is the interconnected simulation work: demand generation, routes, fleet state, economy, progression, runtime recovery, UI orchestration, and persistence.
+Transit Empire is not presented as a finished commercial game. Its value is the interconnected simulation work: demand generation, routes, fleet state, economy, progression, runtime recovery, UI orchestration, persistence, and real-world data preprocessing.
 
 ---
 
@@ -247,11 +267,12 @@ Transit Empire is not presented as a finished commercial game. Its value is the 
 ```text
 Engine: Unity 6 (6000.4.0f1)
 Language: C#
+Data Pipeline: Python
 Rendering: Universal Render Pipeline / 2D
 UI: Unity UI + TextMeshPro
 Input: Unity Input System
 Persistence: JsonUtility + local JSON file
-Data: JSON Resources
+Data: real-world airport CSV + GeoJSON → Unity JSON Resources
 Documentation: Markdown + Mermaid
 ```
 
